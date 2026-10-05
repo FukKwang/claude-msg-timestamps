@@ -45,3 +45,23 @@ test('a streamed reply block gets the time its first chunk arrived', async ($, o
   })
   expect(JSON.stringify(await other.drawn())).not.toContain('] never')
 })
+
+test('a submitted prompt gets the time it was submitted', async ($, on) => {
+  mock.clock(on, { now: Date.UTC(2026, 9, 5, 7, 2, 30) })
+  on('prompt.submit', (_$, e) => ({ text: e.text }))
+  // Stands in for the engine's row: draws the text it is handed.
+  on('ui.render', { component: 'UserMessage' }, ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return h(Text, null, e.props.text) as RenderElement
+  })
+
+  await $.prompt.submit({ text: 'fix the login bug', wait: false, origin: { kind: 'composer' } })
+
+  const ui = await $.ui.mount({
+    plugin: 'msg-timestamps',
+    surface: 'terminal',
+    component: 'UserMessage',
+    props: { text: 'fix the login bug', origin: { kind: 'composer' }, isExpanded: true },
+  })
+  expect(JSON.stringify(await ui.drawn())).toContain('[07:02:30] fix the login bug')
+})

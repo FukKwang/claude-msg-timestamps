@@ -13,6 +13,14 @@ const offsetMin = atom({ plugin: 'msg-timestamps', key: 'offsetMin' } as const, 
 const MAX_STAMPS = 500
 
 export const key = (text: string) => text.trim()
+// Prompts get their own keys, so a prompt and a reply with the same text keep their own times.
+export const userKey = (text: string) => `user:${key(text)}`
+
+const trim = (merged: Stamps) => {
+  const keys = Object.keys(merged)
+  for (const k of keys.slice(0, Math.max(0, keys.length - MAX_STAMPS))) delete merged[k]
+  return merged
+}
 
 export const parseOffset = (z: string) => {
   const m = /^([+-])(\d\d)(\d\d)$/.exec(z.trim())
@@ -32,6 +40,22 @@ export const register: Register = on => {
     return next(e)
   })
 
+  // Stamped before `next`, so the time is in state before the prompt's row is drawn.
+  on('prompt.submit', async ($, e, next) => {
+    const now = await $.clock.now()
+    await update($, stamps, old => trim({ ...old, [userKey(e.text)]: now }))
+    return next(e)
+  })
+
+  on('ui.render', { component: 'UserMessage' }, async ($, e, next) => {
+    const t = (await read($, stamps))[userKey(e.props.text)]
+    if (t === undefined) return next(e)
+
+    // A user row's text is drawn as plain text, not markdown, so no bold here.
+    const offset = (await read($, offsetMin)) ?? 0
+    return next({ ...e, props: { ...e.props, text: `[${formatTime(t, offset)}] ${e.props.text}` } })
+  })
+
   on('turn.step', async function* ($, e, next) {
     // Subagent replies are not drawn as AssistantMessage rows in the main transcript.
     if (e.agentId) return yield* next(e)
@@ -45,12 +69,7 @@ export const register: Register = on => {
       const done = [...started].map(([i, t]) => [key(texts.get(i) ?? ''), t] as const)
       started.clear()
       texts.clear()
-      await update($, stamps, old => {
-        const merged: Stamps = { ...old, ...Object.fromEntries(done) }
-        const keys = Object.keys(merged)
-        for (const k of keys.slice(0, Math.max(0, keys.length - MAX_STAMPS))) delete merged[k]
-        return merged
-      })
+      await update($, stamps, old => trim({ ...old, ...Object.fromEntries(done) }))
     }
 
     const stream = next(e)
