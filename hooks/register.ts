@@ -11,8 +11,6 @@ const stamps = atom({ plugin: 'msg-timestamps', key: 'stamps' } as const, {} as 
 const offsetMin = atom({ plugin: 'msg-timestamps', key: 'offsetMin' } as const, null as number | null)
 
 const MAX_STAMPS = 500
-// A theme key or a raw color (`cyan`, `#5fafff`).
-const TIME_COLOR = 'cyan'
 
 export const key = (text: string) => text.trim()
 
@@ -74,20 +72,6 @@ export const register: Register = on => {
     if (t === undefined) return next(e)
 
     const offset = (await read($, offsetMin)) ?? 0
-    const { Box, Text, Markdown } = $.ui.resolve(e)
-    // Our own row: a rewritten `text` is markdown only and cannot carry a color.
-    return (
-      <Box flexDirection="row" marginTop={1}>
-        <Box width={2} flexShrink={0}>
-          <Text>{e.props.isFirstOfReply ? '●' : ' '}</Text>
-        </Box>
-        <Box flexShrink={0}>
-          <Text color={TIME_COLOR}>[{formatTime(t, offset)}] </Text>
-        </Box>
-        <Box flexGrow={1} flexShrink={1}>
-          <Markdown text={e.props.text} />
-        </Box>
-      </Box>
-    )
+    return next({ ...e, props: { ...e.props, text: `[${formatTime(t, offset)}] ${e.props.text}` } })
   })
 }

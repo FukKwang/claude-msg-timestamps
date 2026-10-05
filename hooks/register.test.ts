@@ -35,9 +35,7 @@ test('a streamed reply block gets the time its first chunk arrived', async ($, o
     component: 'AssistantMessage',
     props: { text: 'Fixed: token expiry check.', isFirstOfReply: true },
   })
-  const time = await ui.find({ type: 'Text', text: /07:02:43/ })
-  expect(time?.props?.color).toBe('cyan')
-  expect(await ui.find({ type: 'Markdown' })).toBeDefined()
+  expect(JSON.stringify(await ui.drawn())).toContain('[07:02:43] Fixed: token expiry check.')
 
   const other = await $.ui.mount({
     plugin: 'msg-timestamps',
@@ -45,5 +43,5 @@ test('a streamed reply block gets the time its first chunk arrived', async ($, o
     component: 'AssistantMessage',
     props: { text: 'never streamed', isFirstOfReply: true },
   })
-  expect(JSON.stringify(await other.drawn())).not.toContain('Markdown')
+  expect(JSON.stringify(await other.drawn())).not.toContain('] never')
 })
