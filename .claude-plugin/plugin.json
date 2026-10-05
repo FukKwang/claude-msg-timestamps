@@ -1,0 +1,6 @@
+{
+  "name": "msg-timestamps",
+  "version": "0.1.0",
+  "description": "Show the local time each assistant reply block started arriving",
+  "types": "./types/index.d.ts"
+}
