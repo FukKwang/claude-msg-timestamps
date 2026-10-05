@@ -38,24 +38,32 @@ export const register: Register = on => {
 
     const started = new Map<number, number>()
     const texts = new Map<number, string>()
-    const stream = next(e)
-    for await (const chunk of stream) {
-      if (chunk.kind === 'text') {
-        if (!started.has(chunk.index)) started.set(chunk.index, await $.clock.now())
-        texts.set(chunk.index, (texts.get(chunk.index) ?? '') + chunk.text)
-      }
-      yield chunk
-    }
-
-    if (started.size > 0) {
+    // The terminal draws a finished block once and never again, so the stamp
+    // must be in state before the engine sees the block end, not after the stream.
+    const flush = async () => {
+      if (started.size === 0) return
+      const done = [...started].map(([i, t]) => [key(texts.get(i) ?? ''), t] as const)
+      started.clear()
+      texts.clear()
       await update($, stamps, old => {
-        const merged: Stamps = { ...old }
-        for (const [i, t] of started) merged[key(texts.get(i) ?? '')] = t
+        const merged: Stamps = { ...old, ...Object.fromEntries(done) }
         const keys = Object.keys(merged)
         for (const k of keys.slice(0, Math.max(0, keys.length - MAX_STAMPS))) delete merged[k]
         return merged
       })
     }
+
+    const stream = next(e)
+    for await (const chunk of stream) {
+      if (chunk.kind === 'text') {
+        if (!started.has(chunk.index)) started.set(chunk.index, await $.clock.now())
+        texts.set(chunk.index, (texts.get(chunk.index) ?? '') + chunk.text)
+      } else {
+        await flush()
+      }
+      yield chunk
+    }
+    await flush()
     return stream.result
   })
 
@@ -64,6 +72,6 @@ export const register: Register = on => {
     if (t === undefined) return next(e)
 
     const offset = (await read($, offsetMin)) ?? 0
-    return next({ ...e, props: { ...e.props, text: `\`${formatTime(t, offset)}\` ${e.props.text}` } })
+    return next({ ...e, props: { ...e.props, text: `[${formatTime(t, offset)}] ${e.props.text}` } })
   })
 }
