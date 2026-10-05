@@ -72,6 +72,6 @@ export const register: Register = on => {
     if (t === undefined) return next(e)
 
     const offset = (await read($, offsetMin)) ?? 0
-    return next({ ...e, props: { ...e.props, text: `[${formatTime(t, offset)}] ${e.props.text}` } })
+    return next({ ...e, props: { ...e.props, text: `**[${formatTime(t, offset)}]** ${e.props.text}` } })
   })
 }

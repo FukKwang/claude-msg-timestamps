@@ -1,6 +1,6 @@
 # msg-timestamps
 
-A Claude Code mod that shows the local time before each assistant reply block in the terminal transcript, for example `● [14:02:43] Fixed: ...`.
+A Claude Code mod that shows the local time before each assistant reply block in the terminal transcript, for example `● **[14:02:43]** Fixed: ...` (the time is bold).
 
 The time is when the first chunk of that block arrived. The timezone comes from the system (`date +%z`).
 
